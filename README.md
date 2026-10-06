@@ -33,13 +33,13 @@ $ uv run exoplanet-detector 11904151   # Kepler-10
   profundidade  150 ppm (SNR 121.6)
   odd/even      0.5 sigma
   secundário    -1.6 sigma
-  formato       0.82 (1 = U, 0.67 = V)
+  ingresso      0.39 (0 = fundo chato, 1 = V)
 
-P(planeta) = 0.27 -> FALSO POSITIVO (binária eclipsante?)
+P(planeta) = 0.51 -> PLANETA
 ```
 
-O BLS encontra a Kepler-10b com precisão (período publicado: 0.837495 d),
-mas o classificador erra: veja [Limitações](#limitações).
+O BLS encontra a Kepler-10b com precisão (período publicado: 0.837495 d). O
+classificador acerta, mas por pouco: veja [Limitações](#limitações).
 
 ## Uso como biblioteca
 
@@ -61,7 +61,7 @@ eclipsando. As features em `features.py` capturam as assinaturas dela:
 |---|---|---|
 | `odd_even_sigma` | trânsitos iguais | eclipses alternados diferentes |
 | `secondary_sigma` | ~0 | queda em fase 0.5 |
-| `shape_ratio` | ~1 (fundo chato, "U") | ~0.67 (formato "V") |
+| `ingress_ratio` | ~0 (fundo chato) | ~1 (formato "V") |
 
 ```python
 from exoplanet_detector.classify import TransitClassifier, analyze, synthetic_training_set
@@ -73,8 +73,8 @@ clf.predict_proba([analyze(lc)])  # probabilidade de ser planeta
 
 ## Resultados em estrelas reais do Kepler
 
-Dataset: 283 estrelas com um único KOI e período entre 0.5 e 30 dias
-(149 planetas confirmados, 134 binárias eclipsantes), 4 quarters de dados
+Dataset: 284 estrelas com um único KOI e período entre 0.5 e 30 dias
+(149 planetas confirmados, 135 binárias eclipsantes), 4 quarters de dados
 cada. Gerado com `scripts/build_dataset.py` e distribuído em
 `src/exoplanet_detector/resources/kepler_features.csv`.
 
@@ -82,19 +82,32 @@ O BLS encontra o período do catálogo (ou metade/dobro) em **82%** das estrelas
 
 | Modelo | Acurácia | ROC AUC |
 |---|---|---|
-| Treinado em sintéticos, testado no Kepler | 0.69 | 0.83 |
-| Treinado no Kepler (validação cruzada, 5 folds) | **0.82** | **0.89** |
+| Treinado em sintéticos, testado no Kepler | 0.80 | 0.89 |
+| Treinado no Kepler (validação cruzada, 5 folds) | **0.87** | **0.92** |
 
-O modelo sintético tinha ~98% de acurácia em dados sintéticos: a diferença
-para 69% mostra o quanto a simulação simplifica a realidade. Reproduza com
-`uv run python scripts/evaluate.py`.
+Reproduza com `uv run python scripts/evaluate.py`.
+
+### Histórico
+
+| Versão | Mudança | Acurácia (Kepler, CV) | ROC AUC | P(planeta) Kepler-10b |
+|---|---|---|---|---|
+| PR 3 | `shape_ratio`: profundidade total / miolo, com a duração do BLS | 0.82 | 0.89 | 0.27 ❌ |
+| PR 4 | `ingress_ratio`: trapézio ajustado e integrado na exposição | **0.87** | **0.92** | 0.51 ✅ |
+
+A feature de formato passou de 14% para 32% da importância do modelo, e as
+medianas se separaram bem: `ingress_ratio` 0.26 para planetas e 0.73 para
+binárias. O modelo treinado só em sintéticos também melhorou (0.69 → 0.80),
+em parte porque os trânsitos simulados passaram a ser integrados na exposição,
+como num detector real.
 
 ### Limitações
 
 - **Planetas de período ultracurto** (ex.: Kepler-10b, 20 h) têm duração/período
   alta, parecida com binárias próximas, e são raros no dataset.
-- **Cadência de 30 min** borra trânsitos curtos (< ~3 h), que ficam com cara de
-  "V" no `shape_ratio`.
+- **Escurecimento de limbo**: a borda da estrela é mais escura, então o fundo do
+  trânsito de um planeta real é curvo, e o trapézio o vê como parcialmente "V"
+  (Kepler-10b: `ingress_ratio` 0.39). Um modelo de trânsito físico (ex.:
+  Mandel & Agol) separaria melhor.
 - Dataset pequeno (283 estrelas) e só os 4 primeiros quarters do Kepler.
 
 ## Desenvolvimento
