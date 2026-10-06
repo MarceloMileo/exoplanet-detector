@@ -25,3 +25,12 @@ def test_preprocess_removes_stellar_variability():
     flat = preprocess(lc)
     assert abs(np.median(flat.flux) - 1) < 1e-4
     assert np.std(flat.flux) < 5e-4
+
+
+def test_flatten_keeps_noise_on_smooth_variability():
+    # Variabilidade forte e lenta com pouco ruído: trechos monótonos longos.
+    # Uma mediana móvel pura devolveria fluxo == 1.0 exato e "apagaria" o ruído.
+    lc = make_lightcurve(period=None, variability=0.05, noise=1e-5, cadence=30 / 60 / 24)
+    flat = preprocess(lc)
+    assert len(flat) > 0.95 * len(lc)
+    assert np.mean(flat.flux == 1.0) < 0.01
