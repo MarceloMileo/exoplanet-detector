@@ -6,6 +6,7 @@ from exoplanet_detector.classify import (
     PLANET,
     TransitClassifier,
     analyze,
+    kepler_training_set,
     synthetic_training_set,
 )
 from exoplanet_detector.features import FEATURE_NAMES
@@ -45,3 +46,10 @@ def test_feature_importances_cover_all_features(classifier):
     importances = classifier.feature_importances()
     assert list(importances) == list(FEATURE_NAMES)
     assert sum(importances.values()) == pytest.approx(1.0)
+
+
+def test_kepler_training_set_has_both_classes():
+    features, labels = kepler_training_set()
+    assert len(features) == len(labels) > 100
+    assert set(labels) == {PLANET, FALSE_POSITIVE}
+    assert set(features[0]) == set(FEATURE_NAMES)

@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+from importlib.resources import files
+
 import numpy as np
+import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 
 from exoplanet_detector.features import FEATURE_NAMES, extract_features, features_to_array
@@ -37,6 +40,19 @@ def synthetic_training_set(
         features.append(analyze(random_eclipsing_binary(rng), frequency_factor))
         labels.append(FALSE_POSITIVE)
     return features, np.array(labels)
+
+
+def kepler_training_set() -> tuple[list[dict[str, float]], np.ndarray]:
+    """Features e rótulos de estrelas reais do Kepler (tabela KOI).
+
+    Gerado por `scripts/build_dataset.py` e distribuído com o pacote, para
+    treinar o modelo sem baixar nenhuma curva de luz.
+    """
+    path = files("exoplanet_detector") / "resources" / "kepler_features.csv"
+    with path.open() as f:
+        dataset = pd.read_csv(f)
+    features = dataset[list(FEATURE_NAMES)].to_dict("records")
+    return features, dataset["label"].to_numpy()
 
 
 class TransitClassifier:

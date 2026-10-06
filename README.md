@@ -18,9 +18,23 @@ curva de luz → pré-processamento → busca BLS → features → classificador
 | Curvas sintéticas (planetas e binárias eclipsantes) | `synthetic.py` | ✅ |
 | Features de vetting (odd/even, secundário, formato) | `features.py` | ✅ |
 | Classificador (Random Forest) | `classify.py` | ✅ |
-| Download via lightkurve + CLI | — | 🔜 |
+| Dados reais: tabela KOI + curvas do Kepler | `data.py` | ✅ |
+| Linha de comando | `cli.py` | ✅ |
 
-## Uso rápido
+## Linha de comando
+
+Analisa uma estrela do Kepler pelo ID KIC (baixa ~1 ano de dados do MAST):
+
+```console
+$ uv run exoplanet-detector 11904151   # Kepler-10
+...
+  período       0.83749 d
+  profundidade  148 ppm (SNR 120.6)
+...
+P(planeta) = ... -> PLANETA
+```
+
+## Uso como biblioteca
 
 ```python
 from exoplanet_detector import preprocess, search_transit
