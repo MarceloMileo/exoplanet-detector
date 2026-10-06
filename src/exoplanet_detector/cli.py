@@ -43,7 +43,7 @@ def main(argv: list[str] | None = None) -> None:
     print(f"  profundidade  {candidate.depth * 1e6:.0f} ppm (SNR {candidate.depth_snr:.1f})")
     print(f"  odd/even      {features['odd_even_sigma']:.1f} sigma")
     print(f"  secundário    {features['secondary_sigma']:.1f} sigma")
-    print(f"  formato       {features['shape_ratio']:.2f} (1 = U, 0.67 = V)")
+    print(f"  ingresso      {features['ingress_ratio']:.2f} (0 = fundo chato, 1 = V)")
     verdict = "PLANETA" if probability >= 0.5 else "FALSO POSITIVO (binária eclipsante?)"
     print(f"\nP(planeta) = {probability:.2f} -> {verdict}")
 

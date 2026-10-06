@@ -1,3 +1,7 @@
+import re
+
+import pytest
+
 from exoplanet_detector import cli
 from exoplanet_detector.synthetic import FFI_CADENCE, make_lightcurve
 
@@ -11,5 +15,6 @@ def test_cli_reports_candidate(monkeypatch, capsys):
     cli.main(["123", "--quarters", "1", "2"])
 
     out = capsys.readouterr().out
-    assert "período       2.5" in out
+    period = float(re.search(r"período\s+([\d.]+) d", out).group(1))
+    assert period == pytest.approx(2.5, rel=1e-3)
     assert "P(planeta) = " in out

@@ -10,6 +10,7 @@ from exoplanet_detector.lightcurve import LightCurve
 
 TESS_CADENCE = 2.0 / 60 / 24  # 2 minutos, em dias
 FFI_CADENCE = 30.0 / 60 / 24  # 30 minutos (imagens completas do TESS)
+EXPOSURE_SUBSAMPLES = 9
 
 
 def _eclipse_profile(
@@ -44,21 +45,29 @@ def make_lightcurve(
     Para simular uma binária eclipsante, use `shape="v"`, `odd_even_ratio`
     (profundidade dos eclipses ímpares relativa aos pares) e/ou
     `secondary_depth` (eclipse secundário em fase 0.5).
+
+    Como num detector real, cada ponto é a média do fluxo durante a exposição
+    (igual à cadência), o que suaviza as bordas de trânsitos curtos.
     """
     rng = np.random.default_rng(seed)
     time = np.arange(0.0, baseline, cadence)
     flux = 1.0 + variability * np.sin(2 * np.pi * time / 6.3)
 
     if period is not None:
-        shifted = time - t0 + 0.5 * period
-        phase = shifted % period - 0.5 * period
-        odd = np.floor(shifted / period) % 2 == 1
-        primary_depth = np.where(odd, depth * odd_even_ratio, depth)
-        dip = _eclipse_profile(phase, duration, 1.0, shape) * primary_depth
-        if secondary_depth > 0:
-            phase2 = (time - t0) % period - 0.5 * period
-            dip += _eclipse_profile(phase2, duration, secondary_depth, shape)
-        flux = flux * (1 - dip)
+
+        def dip_at(t: np.ndarray) -> np.ndarray:
+            shifted = t - t0 + 0.5 * period
+            phase = shifted % period - 0.5 * period
+            odd = np.floor(shifted / period) % 2 == 1
+            primary_depth = np.where(odd, depth * odd_even_ratio, depth)
+            dip = _eclipse_profile(phase, duration, 1.0, shape) * primary_depth
+            if secondary_depth > 0:
+                phase2 = (t - t0) % period - 0.5 * period
+                dip += _eclipse_profile(phase2, duration, secondary_depth, shape)
+            return dip
+
+        offsets = ((np.arange(EXPOSURE_SUBSAMPLES) + 0.5) / EXPOSURE_SUBSAMPLES - 0.5) * cadence
+        flux = flux * (1 - np.mean([dip_at(time + u) for u in offsets], axis=0))
 
     flux = flux + rng.normal(0.0, noise, time.size)
     return LightCurve(time, flux, np.full(time.size, noise))
