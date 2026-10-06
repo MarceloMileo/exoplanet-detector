@@ -27,12 +27,19 @@ Analisa uma estrela do Kepler pelo ID KIC (baixa ~1 ano de dados do MAST):
 
 ```console
 $ uv run exoplanet-detector 11904151   # Kepler-10
-...
-  período       0.83749 d
-  profundidade  148 ppm (SNR 120.6)
-...
-P(planeta) = ... -> PLANETA
+10794 pontos, 242 dias de observação
+  período       0.83750 d
+  duração       1.92 h
+  profundidade  150 ppm (SNR 121.6)
+  odd/even      0.5 sigma
+  secundário    -1.6 sigma
+  formato       0.82 (1 = U, 0.67 = V)
+
+P(planeta) = 0.27 -> FALSO POSITIVO (binária eclipsante?)
 ```
+
+O BLS encontra a Kepler-10b com precisão (período publicado: 0.837495 d),
+mas o classificador erra: veja [Limitações](#limitações).
 
 ## Uso como biblioteca
 
@@ -64,8 +71,31 @@ clf = TransitClassifier().fit(features, labels)
 clf.predict_proba([analyze(lc)])  # probabilidade de ser planeta
 ```
 
-> ⚠️ Por enquanto o modelo é treinado só com dados sintéticos; a acurácia
-> (~98%) é otimista. Treino com rótulos reais (tabela KOI) vem a seguir.
+## Resultados em estrelas reais do Kepler
+
+Dataset: 283 estrelas com um único KOI e período entre 0.5 e 30 dias
+(149 planetas confirmados, 134 binárias eclipsantes), 4 quarters de dados
+cada. Gerado com `scripts/build_dataset.py` e distribuído em
+`src/exoplanet_detector/resources/kepler_features.csv`.
+
+O BLS encontra o período do catálogo (ou metade/dobro) em **82%** das estrelas.
+
+| Modelo | Acurácia | ROC AUC |
+|---|---|---|
+| Treinado em sintéticos, testado no Kepler | 0.69 | 0.83 |
+| Treinado no Kepler (validação cruzada, 5 folds) | **0.82** | **0.89** |
+
+O modelo sintético tinha ~98% de acurácia em dados sintéticos: a diferença
+para 69% mostra o quanto a simulação simplifica a realidade. Reproduza com
+`uv run python scripts/evaluate.py`.
+
+### Limitações
+
+- **Planetas de período ultracurto** (ex.: Kepler-10b, 20 h) têm duração/período
+  alta, parecida com binárias próximas, e são raros no dataset.
+- **Cadência de 30 min** borra trânsitos curtos (< ~3 h), que ficam com cara de
+  "V" no `shape_ratio`.
+- Dataset pequeno (283 estrelas) e só os 4 primeiros quarters do Kepler.
 
 ## Desenvolvimento
 
