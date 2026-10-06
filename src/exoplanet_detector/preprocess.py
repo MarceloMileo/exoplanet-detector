@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import numpy as np
-from scipy.ndimage import median_filter
+from scipy.ndimage import median_filter, uniform_filter1d
 
 from exoplanet_detector.lightcurve import LightCurve
 
@@ -30,10 +30,15 @@ def flatten(lc: LightCurve, window: float = 0.75) -> LightCurve:
     `window` é a largura da janela em dias e deve ser bem maior que a duração
     do trânsito; caso contrário, o filtro "come" o próprio sinal que queremos
     detectar. A conversão para número de pontos usa a cadência mediana.
+
+    A mediana móvel é suavizada por uma média móvel de mesma largura: em
+    trechos monótonos (estrela variando devagar) a mediana de uma janela
+    centrada é o próprio ponto, o que zeraria o resíduo e esconderia o ruído.
     """
     cadence = np.median(np.diff(lc.time))
     window_length = min(int(round(window / cadence)) | 1, len(lc))
     trend = median_filter(lc.flux, size=window_length, mode="nearest")
+    trend = uniform_filter1d(trend, size=window_length, mode="nearest")
     flux_err = None if lc.flux_err is None else lc.flux_err / trend
     return LightCurve(lc.time, lc.flux / trend, flux_err)
 

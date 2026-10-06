@@ -49,7 +49,10 @@ def extract_features(lc: LightCurve, candidate: TransitCandidate) -> dict[str, f
     period, t0, half = candidate.period, candidate.t0, candidate.duration / 2
     phase = _phase(lc.time, period, t0)
     in_transit = np.abs(phase) < half
-    noise = 1.4826 * float(np.median(np.abs(lc.flux[~in_transit] - 1.0)))
+    out_of_transit = lc.flux[~in_transit]
+    noise = 1.4826 * float(np.median(np.abs(out_of_transit - 1.0)))
+    if noise == 0:  # curva com resíduo degenerado: o MAD não serve
+        noise = float(np.std(out_of_transit))
 
     depth, depth_err = _depth(lc.flux, in_transit, noise)
 
@@ -75,5 +78,9 @@ def extract_features(lc: LightCurve, candidate: TransitCandidate) -> dict[str, f
 
 
 def features_to_array(features: list[dict[str, float]]) -> np.ndarray:
-    """Converte uma lista de dicionários de features numa matriz (n, n_features)."""
-    return np.array([[f[name] for name in FEATURE_NAMES] for f in features], dtype=float)
+    """Converte uma lista de dicionários de features numa matriz (n, n_features).
+
+    Valores infinitos viram NaN, que o classificador trata como ausentes.
+    """
+    array = np.array([[f[name] for name in FEATURE_NAMES] for f in features], dtype=float)
+    return np.where(np.isfinite(array), array, np.nan)
