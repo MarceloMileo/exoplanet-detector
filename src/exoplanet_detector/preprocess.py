@@ -24,13 +24,15 @@ def normalize(lc: LightCurve) -> LightCurve:
     return LightCurve(lc.time, lc.flux / median, flux_err)
 
 
-def flatten(lc: LightCurve, window_length: int = 401) -> LightCurve:
+def flatten(lc: LightCurve, window: float = 0.75) -> LightCurve:
     """Remove a variabilidade lenta da estrela dividindo por uma mediana móvel.
 
-    A janela deve ser bem maior que a duração do trânsito; caso contrário, o
-    filtro "come" o próprio sinal que queremos detectar.
+    `window` é a largura da janela em dias e deve ser bem maior que a duração
+    do trânsito; caso contrário, o filtro "come" o próprio sinal que queremos
+    detectar. A conversão para número de pontos usa a cadência mediana.
     """
-    window_length = min(window_length, len(lc))
+    cadence = np.median(np.diff(lc.time))
+    window_length = min(int(round(window / cadence)) | 1, len(lc))
     trend = median_filter(lc.flux, size=window_length, mode="nearest")
     flux_err = None if lc.flux_err is None else lc.flux_err / trend
     return LightCurve(lc.time, lc.flux / trend, flux_err)
@@ -47,9 +49,9 @@ def clip_upper_outliers(lc: LightCurve, sigma: float = 4.0) -> LightCurve:
     return lc.select(lc.flux < median + sigma * mad_std)
 
 
-def preprocess(lc: LightCurve, window_length: int = 401, sigma: float = 4.0) -> LightCurve:
+def preprocess(lc: LightCurve, window: float = 0.75, sigma: float = 4.0) -> LightCurve:
     """Pipeline padrão: limpa NaNs, normaliza, remove tendência e outliers."""
     lc = remove_nans(lc)
     lc = normalize(lc)
-    lc = flatten(lc, window_length=window_length)
+    lc = flatten(lc, window=window)
     return clip_upper_outliers(lc, sigma=sigma)

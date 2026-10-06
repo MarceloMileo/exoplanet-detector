@@ -29,11 +29,13 @@ def search_transit(
     min_period: float = 0.5,
     max_period: float | None = None,
     durations: tuple[float, ...] = DEFAULT_DURATIONS,
+    frequency_factor: float = 1.0,
 ) -> TransitCandidate:
     """Roda o BLS na curva (já pré-processada) e retorna o pico mais forte.
 
     Por padrão, `max_period` é metade da duração da série, garantindo ao menos
-    dois trânsitos observados.
+    dois trânsitos observados. `frequency_factor` > 1 deixa a grade de períodos
+    mais grossa: a busca fica mais rápida, com risco de errar picos estreitos.
     """
     baseline = lc.time.max() - lc.time.min()
     if max_period is None:
@@ -42,7 +44,12 @@ def search_transit(
         raise ValueError("série curta demais para o intervalo de períodos pedido")
 
     model = BoxLeastSquares(lc.time, lc.flux, dy=lc.flux_err)
-    periods = model.autoperiod(durations, minimum_period=min_period, maximum_period=max_period)
+    periods = model.autoperiod(
+        durations,
+        minimum_period=min_period,
+        maximum_period=max_period,
+        frequency_factor=frequency_factor,
+    )
     result = model.power(periods, durations, objective="snr")
 
     best = int(np.argmax(result.power))
